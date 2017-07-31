@@ -1,0 +1,7 @@
+## DasBootDllTemplate.dll
+
+**HelloWorldTempla**  *db_hello_world*  示例dll中的唯一函数，用于printf()"hello world from dll.\r\n"，并输出第一参数的内容。
+
+## DasBootDllProcess.dll
+
+**EnumProcess00000**  *db_enum_process*  遍历进程。
