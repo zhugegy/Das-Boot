@@ -42,7 +42,7 @@ int db_enum_process(string &strParam, list<string>& lstMsgToSend)
 //所有的dll必须有，并且导出此函数
 int dbplugin_load_dll(unordered_map<string, pfnDBExport>& mapFunctions)
 {
-  mapFunctions["EnumProcess00000"] = (pfnDBExport)db_enum_process;
+  mapFunctions["EnumProcess0000"] = (pfnDBExport)db_enum_process;
 
   //TRACE(_T("本dll内的所有所有函数加载成功"));
   return 0;

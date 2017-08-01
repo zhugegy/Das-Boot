@@ -2,22 +2,24 @@
 #include <list>
 #include <unordered_map>
 #include <windows.h>
-// #include <WinSock2.h>
-// #include <stdio.h>
 #include "BufPacket.h"
 #include "DasBootSocket.h"
+#include "DasBootBasicRepl.h"
 
 using namespace std;
 
-#pragma comment(lib, "ws2_32.lib");
+#pragma comment(lib, "ws2_32.lib")
 
-typedef int(*pfnDBExport)(string &strParam, list<string>& lstMsgToSend);
+typedef int(*pfnDBExportClient)(const char *strParam);
 
-typedef int(*pfnPluginInterface)(unordered_map<string, pfnDBExport>& mapFunctions);
+typedef int(*pfnPluginInterfaceClient)(unordered_map<string, pfnDBExportClient>& mapFunctions);
 
-int SendMsgText(SOCKET hSocket);
+int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent);
 DWORD RecvThreadFunc(LPVOID lpParam);
 
+//全局变量
+unordered_map<string, pfnDBExportClient> g_mapFunctions;
+SOCKET g_hSocketClient = INVALID_SOCKET;
 
 int main()
 {
@@ -51,6 +53,9 @@ int main()
 // 
 //   getchar();
 
+  //初始化map
+  AddBasicReplToMapFunctions();
+
   WORD wVersionRequested;
   WSADATA wsaData;
   int err;
@@ -65,13 +70,12 @@ int main()
     return 0;
   }
 
-  SOCKET hSocketClient = INVALID_SOCKET;
   sockaddr_in addr;
   memset(&addr, 0, sizeof(sockaddr_in));
 
-  hSocketClient = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  g_hSocketClient = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-  if (hSocketClient == INVALID_SOCKET)
+  if (g_hSocketClient == INVALID_SOCKET)
   {
     return 0;
   }
@@ -80,7 +84,7 @@ int main()
   addr.sin_port = htons(8889);
   addr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
 
-  int nRet = connect(hSocketClient, (sockaddr*)&addr, sizeof(sockaddr_in));
+  int nRet = connect(g_hSocketClient, (sockaddr*)&addr, sizeof(sockaddr_in));
 
   if (nRet == SOCKET_ERROR)
   {
@@ -88,9 +92,9 @@ int main()
   }
 
   HANDLE hRecvThread = CreateThread(NULL, 0, 
-    (LPTHREAD_START_ROUTINE)RecvThreadFunc, (LPVOID)hSocketClient, 0, NULL);
+    (LPTHREAD_START_ROUTINE)RecvThreadFunc, (LPVOID)g_hSocketClient, 0, NULL);
 
-  SendMsgText(hSocketClient);
+  
 
 //   closesocket(hSocketClient);
 //   WSACleanup();
@@ -100,34 +104,7 @@ int main()
   return 0;
 }
 
-int SendMsgText(SOCKET hSocket)
-{
-  //开始发送数据
-  CDasBootSocket sendSkt(hSocket);
-  CBufPacket pkt;
-  char szHead[5] = { 0 };
-  DWORD dwSize = sizeof(DWORD) + sizeof(BYTE) + 6/*sizeof(DWORD) + sizeof(BYTE) + sizeof(DWORD) + sizeof(DWORD)
-    + 88*/;
-  (DWORD&)*szHead = dwSize;
-  szHead[4] = 'a';
-  pkt.Append(szHead, sizeof(szHead));
-//   pkt.Append((char*)&nWidth, sizeof(DWORD));
-//   pkt.Append((char*)&nHeigth, sizeof(DWORD));
-//   pkt.Append(szBit, dwCount);
 
-  pkt.Append("hello", sizeof("hello"));
-
-  sendSkt.SendPkt(pkt);
-
-
-//   if (szBit != NULL)
-//   {
-//     delete[] szBit;
-//   }
-
-
-  return 0;
-}
 
 //处理服务器发送的数据
 DWORD RecvThreadFunc(LPVOID lpParam)
@@ -155,17 +132,16 @@ DWORD RecvThreadFunc(LPVOID lpParam)
       //unlock();
 
       char* pszBuf = RecvPkt.GetBuf();
-      switch (pszBuf[4])
-      {
-      case 'a':
-      {
-        //发送下一帧
-        //pDlg->SendScreenMsg(pDlg->m_Client);
-        Sleep(10);
-      }
-      break;
 
-      }
+      printf(TEXT("%s\r\n"), pszBuf + 4);  //debug
+      printf(TEXT("%s\r\n"), pszBuf + 4 + 16);  //debug
+
+      char szMsgType[16] = { 0 };
+      strcpy(szMsgType, pszBuf + 4);
+
+      pfnDBExportClient pfn;
+      pfn = g_mapFunctions[szMsgType];
+      pfn(pszBuf + 4 + 16);
     }
     else
     {

@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "afxcmn.h"
 
 
 // CDasBootServerDlg dialog
@@ -36,4 +37,6 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
   afx_msg void OnBnClickedButtonMainStartListening();
+  afx_msg void OnBnClickedButtonMainStopListening();
+  CListCtrl m_lstctlClientList;
 };

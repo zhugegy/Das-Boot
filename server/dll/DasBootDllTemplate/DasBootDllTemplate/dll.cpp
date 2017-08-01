@@ -26,7 +26,7 @@ int db_hello_world(string &strParam, list<string>& lstMsgToSend)
 //所有的dll必须有，并且导出此函数
 int dbplugin_load_dll(unordered_map<string, pfnDBExport>& mapFunctions)
 {
-  mapFunctions["HelloWorldTempla"] = (pfnDBExport)db_hello_world;
+  mapFunctions["HelloWorldTempl"] = (pfnDBExport)db_hello_world;
 
   //TRACE(_T("本dll内的所有所有函数加载成功"));
   return 0;

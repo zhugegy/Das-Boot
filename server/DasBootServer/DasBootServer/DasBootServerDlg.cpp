@@ -10,6 +10,13 @@
 #include "ClientManager.h"
 #include "BufPacket.h"
 #include "DasBootSocket.h"
+#include "DasBootBasicCommands.h"
+#include <string>
+#include <unordered_map>
+
+using namespace std;
+
+typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hClientSocket);
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -61,7 +68,8 @@ CDasBootServerDlg::CDasBootServerDlg(CWnd* pParent /*=NULL*/)
 
 void CDasBootServerDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+  CDialogEx::DoDataExchange(pDX);
+  DDX_Control(pDX, IDC_LIST_MAIN_CLIENT_LIST, m_lstctlClientList);
 }
 
 BEGIN_MESSAGE_MAP(CDasBootServerDlg, CDialogEx)
@@ -70,10 +78,13 @@ BEGIN_MESSAGE_MAP(CDasBootServerDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
   ON_BN_CLICKED(IDC_BUTTON_MAIN_START_LISTENING, &CDasBootServerDlg::OnBnClickedButtonMainStartListening)
   ON_MESSAGE(WM_PKTHANDLEMSG, OnPktHandleMsg)
+  ON_BN_CLICKED(IDC_BUTTON_MAIN_STOP_LISTENING, &CDasBootServerDlg::OnBnClickedButtonMainStopListening)
 END_MESSAGE_MAP()
 
 
 // CDasBootServerDlg message handlers
+unordered_map<string, pfnDBExportServer> g_mapFunctions;
+CDasBootServerDlg* g_pMainDlg = NULL;
 
 BOOL CDasBootServerDlg::OnInitDialog()
 {
@@ -105,6 +116,21 @@ BOOL CDasBootServerDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+
+  AddBasicCommandsToMapFunctions();
+  g_pMainDlg = this;
+
+  m_lstctlClientList.ModifyStyle(0, LVS_REPORT);
+  DWORD dwStye = m_lstctlClientList.GetExtendedStyle();
+  dwStye = dwStye | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES;
+  m_lstctlClientList.SetExtendedStyle(dwStye);
+
+  m_lstctlClientList.InsertColumn(0, _T("socket"), 0, 90);
+  m_lstctlClientList.InsertColumn(1, _T("IP"), 0, 102);
+  m_lstctlClientList.InsertColumn(2, _T("地理位置"), 0, 116);
+  m_lstctlClientList.InsertColumn(3, _T("操作系统"), 0, 292);
+  m_lstctlClientList.InsertColumn(4, _T("用户名"), 0, 100);
+  m_lstctlClientList.InsertColumn(5, _T("系统运行时间"), 0, 90);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -272,6 +298,17 @@ DWORD ThreadProc(LPARAM lparam)
             TRACE("WSAAsyncSelect绑定 socket 失败");
             theApp.DecreaseSocketEventNum();
           }
+
+          //在监听列表里加入此项
+          CString strhSocketTmp;
+          strhSocketTmp.Format("%d", hSocketConnection);
+
+          pDlg->m_lstctlClientList.InsertItem( LVIF_TEXT | LVIF_STATE, 0, 
+            strhSocketTmp, 0, 0, 0, 0);
+          pDlg->m_lstctlClientList.SetItemData(0, hSocketConnection);
+
+          //发送基本信息查询指令
+          DBBCClientListInfoQueryC(hSocketConnection);
         }
         else if (tagNetworkEvent.iErrorCode[FD_READ_BIT] == 0 &&
           tagNetworkEvent.lNetworkEvents == FD_READ)
@@ -389,6 +426,8 @@ void CDasBootServerDlg::OnBnClickedButtonMainStartListening()
 
 }
 
+
+
 HRESULT CDasBootServerDlg::OnPktHandleMsg(WPARAM wParam, LPARAM lParam)
 {
 
@@ -400,30 +439,21 @@ HRESULT CDasBootServerDlg::OnPktHandleMsg(WPARAM wParam, LPARAM lParam)
     return 0;
   }
 
-  switch (pszBuf[4])
-  {
-//   case CLIENT_SCREEN:
-//   {
-//     OnScreen(sRecv, pszBuf + 5, *(DWORD*)(pszBuf));
-//   }
-  break;
-  }
+  char szMsgType[16] = { 0 };
+  strcpy(szMsgType, pszBuf + 4);
 
-  CDasBootSocket sendSkt(sRecv);
-  CBufPacket pkt;
-  char szHead[5] = { 0 };
-  DWORD dwSize = sizeof(DWORD) + sizeof(BYTE) + 6/*sizeof(DWORD) + sizeof(BYTE) + sizeof(DWORD) + sizeof(DWORD)
-                                                 + 88*/;
-  (DWORD&)*szHead = dwSize;
-  szHead[4] = 'a';
-  pkt.Append(szHead, sizeof(szHead));
-  //   pkt.Append((char*)&nWidth, sizeof(DWORD));
-  //   pkt.Append((char*)&nHeigth, sizeof(DWORD));
-  //   pkt.Append(szBit, dwCount);
+  pfnDBExportServer pfn;
+  pfn = g_mapFunctions[szMsgType];
+  pfn(pszBuf + 4 + 16, sRecv);
 
-  pkt.Append("world", sizeof("world"));
-
-  sendSkt.SendPkt(pkt);
+  //SendMessageOut(sRecv, _T("HelloWorldTempu"), _T("nihao测试锄禾日当午"));
 
   return 0;
+}
+
+
+
+void CDasBootServerDlg::OnBnClickedButtonMainStopListening()
+{
+  // TODO: Add your control notification handler code here
 }

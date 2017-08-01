@@ -24,12 +24,18 @@
     <ClCompile Include="DasBootSocket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DasBootBasicRepl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BufPacket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DasBootSocket.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DasBootBasicRepl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

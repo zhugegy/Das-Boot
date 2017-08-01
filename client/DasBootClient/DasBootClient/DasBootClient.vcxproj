@@ -145,11 +145,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BufPacket.cpp" />
+    <ClCompile Include="DasBootBasicRepl.cpp" />
     <ClCompile Include="DasBootClient.cpp" />
     <ClCompile Include="DasBootSocket.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BufPacket.h" />
+    <ClInclude Include="DasBootBasicRepl.h" />
     <ClInclude Include="DasBootSocket.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
