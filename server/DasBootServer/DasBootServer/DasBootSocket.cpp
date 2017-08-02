@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DasBootSocket.h"
+#include "DasBootServer.h"
 
 
 CDasBootSocket::CDasBootSocket(SOCKET hSocket)
@@ -12,10 +13,22 @@ CDasBootSocket::~CDasBootSocket()
 {
 }
 
+extern CDasBootServerApp theApp;
+
 int CDasBootSocket::SendPkt(CBufPacket& pkt)
 {
+  CBufPacket *pTmpPkt = new CBufPacket;
+  *pTmpPkt = pkt;
 
-  return SendData(pkt.GetBuf(), pkt.GetLength());
+  EnterCriticalSection(&theApp.m_csSendListOperation);
+  theApp.m_hSendListSockets.AddHead(m_Socket);
+  theApp.m_hSendListPkts.AddHead(pTmpPkt);
+  theApp.m_nSendListElementCount++;
+  LeaveCriticalSection(&theApp.m_csSendListOperation);
+
+  return 0;
+  //zgc20170802 大改send
+  //return SendData(pkt.GetBuf(), pkt.GetLength());
 }
 
 //undone 这里是重置了pkt的信息，比较暴力，暂时先这么用。真正的大批量处理数据，都是用

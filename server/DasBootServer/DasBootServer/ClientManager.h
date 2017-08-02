@@ -30,6 +30,9 @@ struct CClientContext
   CBufPacket m_Packet; //处理增删改查（每个client拥有自己的BufPacket，用于存储接收的数据）
                     //发送的时候，由于数据量小，所以没必要给每个client单独建发送pkt
   char      m_szRecvBuf[RECV_BYTES]; //用于每次接收(recv()函数)的临时缓冲区
+
+  FILE *m_pCurrentFile = NULL;
+  int m_nFileChunckCount = 0;
 };
 
 class CClientManager

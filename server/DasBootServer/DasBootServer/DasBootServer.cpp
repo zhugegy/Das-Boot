@@ -32,6 +32,7 @@ CDasBootServerApp::CDasBootServerApp()
   memset(m_harySocket, 0, sizeof(m_harySocket));
   memset(m_haryEvent, 0, sizeof(m_haryEvent));
 
+  m_nSendListElementCount = 0;
 }
 
 

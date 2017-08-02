@@ -1,25 +1,35 @@
 #include <string>
 #include <list>
 #include <unordered_map>
-#include <windows.h>
+#include <afxtempl.h>
 #include "BufPacket.h"
 #include "DasBootSocket.h"
 #include "DasBootBasicRepl.h"
+
 
 using namespace std;
 
 #pragma comment(lib, "ws2_32.lib")
 
-typedef int(*pfnDBExportClient)(const char *strParam);
+typedef int(*pfnDBExportClient)(const char *strParam, int nMsgLength);
 
 typedef int(*pfnPluginInterfaceClient)(unordered_map<string, pfnDBExportClient>& mapFunctions);
 
-int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent);
+
 DWORD RecvThreadFunc(LPVOID lpParam);
+DWORD SendPktThreadProc(LPARAM lparam);
 
 //全局变量
 unordered_map<string, pfnDBExportClient> g_mapFunctions;
 SOCKET g_hSocketClient = INVALID_SOCKET;
+FILE *g_pCurrentFile = NULL;
+int g_nFileChunckCount = 0;
+
+CList<SOCKET, SOCKET> g_hSendListSockets;
+CList<CBufPacket *, CBufPacket *> g_hSendListPkts;
+int g_nSendListElementCount = 0;
+CRITICAL_SECTION g_csSendListOperation;
+
 
 int main()
 {
@@ -55,6 +65,11 @@ int main()
 
   //初始化map
   AddBasicReplToMapFunctions();
+
+  InitializeCriticalSection(&g_csSendListOperation);
+
+  HANDLE hSendThread = CreateThread(NULL, 0,
+    (LPTHREAD_START_ROUTINE)SendPktThreadProc, 0, 0, NULL);
 
   WORD wVersionRequested;
   WSADATA wsaData;
@@ -100,6 +115,9 @@ int main()
 //   WSACleanup();
 
   WaitForSingleObject(hRecvThread, INFINITE);
+  TerminateThread(hSendThread, 0);
+
+  DeleteCriticalSection(&g_csSendListOperation);
 
   return 0;
 }
@@ -133,15 +151,15 @@ DWORD RecvThreadFunc(LPVOID lpParam)
 
       char* pszBuf = RecvPkt.GetBuf();
 
-      printf(TEXT("%s\r\n"), pszBuf + 4);  //debug
-      printf(TEXT("%s\r\n"), pszBuf + 4 + 16);  //debug
-
+      //printf(TEXT("%s\r\n"), pszBuf + 4);  //debug
+      //printf(TEXT("%s\r\n"), pszBuf + 4 + 16);  //debug
+      int nMsgLength = (int &)(*pszBuf);
       char szMsgType[16] = { 0 };
       strcpy(szMsgType, pszBuf + 4);
 
       pfnDBExportClient pfn;
       pfn = g_mapFunctions[szMsgType];
-      pfn(pszBuf + 4 + 16);
+      pfn(pszBuf + 4 + 16, nMsgLength);
     }
     else
     {
@@ -151,7 +169,34 @@ DWORD RecvThreadFunc(LPVOID lpParam)
 
   }
 
-
   return 0;
 }
 
+DWORD SendPktThreadProc(LPARAM lparam)
+{
+  while (true)
+  {
+    if (g_nSendListElementCount != 0)
+    {
+      if (g_hSendListPkts.GetCount() != 0)
+      {
+        EnterCriticalSection(&g_csSendListOperation);
+
+        SOCKET hSocket = g_hSendListSockets.GetTail();
+        CBufPacket *pTmpPkt = g_hSendListPkts.GetTail();
+        CDasBootSocket sendSkt(hSocket);
+        sendSkt.SendData((*pTmpPkt).GetBuf(), (*pTmpPkt).GetLength());
+        delete pTmpPkt;
+        g_hSendListSockets.RemoveTail();
+        g_hSendListPkts.RemoveTail();
+        g_nSendListElementCount--;
+
+        LeaveCriticalSection(&g_csSendListOperation);
+      }
+    }
+
+    Sleep(50);  //30以上保险
+  }
+
+  return 0;
+}

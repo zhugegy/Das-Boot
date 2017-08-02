@@ -10,6 +10,21 @@
 
 **ClientListInfoC**
 
+**GiveClientFileC**   DBBCGiveClientFileC(hSocket, _T("mytrans.txt"), _T("C:\\Users\\Administrator\\Desktop\\dasboot测试\\kuaile.txt")); //成功
+                      DBBCGiveClientFileC(hSocket, _T("C:\\Users\\Administrator\\Desktop\\技术点待学习.txt"), _T("C:\\Users\\Administrator\\Desktop\\dasboot测试\\kuaile.txt")); //成功
+
+**TranClientFileC**
+**ClosClientFileC**
+
+**GetClientFile0C**
+
 ## Basic Client
 
 **ClientListInfoR**
+
+**GiveClientFileR**
+**TranClientFileR**
+**ClosClientFileR**
+
+**GetClientFile0R**
+**ClosServerFileN**

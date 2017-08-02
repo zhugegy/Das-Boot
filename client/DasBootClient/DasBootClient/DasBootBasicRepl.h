@@ -1,7 +1,10 @@
 #pragma once
-#include <windows.h>
+#include <afxtempl.h>
+#include <afxsock.h>
 
-int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent);
+int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent, DWORD dwContentLength = -1);
+
+
 int AddBasicReplToMapFunctions();
 
 

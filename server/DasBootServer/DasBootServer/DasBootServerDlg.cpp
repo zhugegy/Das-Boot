@@ -16,7 +16,10 @@
 
 using namespace std;
 
-typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hClientSocket);
+DWORD SendPktThreadProc(LPARAM lparam);
+
+
+typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hClientSocket, int nMsgLength);
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -79,6 +82,7 @@ BEGIN_MESSAGE_MAP(CDasBootServerDlg, CDialogEx)
   ON_BN_CLICKED(IDC_BUTTON_MAIN_START_LISTENING, &CDasBootServerDlg::OnBnClickedButtonMainStartListening)
   ON_MESSAGE(WM_PKTHANDLEMSG, OnPktHandleMsg)
   ON_BN_CLICKED(IDC_BUTTON_MAIN_STOP_LISTENING, &CDasBootServerDlg::OnBnClickedButtonMainStopListening)
+  ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 
@@ -116,6 +120,10 @@ BOOL CDasBootServerDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+  InitializeCriticalSection(&theApp.m_csSendListOperation);
+
+  //专门用来发送消息的线程
+  AfxBeginThread((AFX_THREADPROC)SendPktThreadProc, 0);
 
   AddBasicCommandsToMapFunctions();
   g_pMainDlg = this;
@@ -185,6 +193,35 @@ HCURSOR CDasBootServerDlg::OnQueryDragIcon()
 }
 
 extern CDasBootServerApp theApp;
+
+DWORD SendPktThreadProc(LPARAM lparam)
+{
+  while (true)
+  {
+    if (theApp.m_nSendListElementCount != 0)
+    {
+      if (theApp.m_hSendListPkts.GetCount() != 0)
+      {
+        EnterCriticalSection(&theApp.m_csSendListOperation);
+
+        SOCKET hSocket = theApp.m_hSendListSockets.GetTail();
+        CBufPacket *pTmpPkt = theApp.m_hSendListPkts.GetTail();
+        CDasBootSocket sendSkt(hSocket);
+        sendSkt.SendData((*pTmpPkt).GetBuf(), (*pTmpPkt).GetLength());
+        delete pTmpPkt;
+        theApp.m_hSendListSockets.RemoveTail();
+        theApp.m_hSendListPkts.RemoveTail();
+        theApp.m_nSendListElementCount--;
+
+        LeaveCriticalSection(&theApp.m_csSendListOperation);
+      }
+    }
+
+    Sleep(50);  //30以上保险，否则易丢数据
+  }
+
+  return 0;
+}
 
 //EventSelect时间选择模型
 DWORD ThreadProc(LPARAM lparam)
@@ -439,12 +476,14 @@ HRESULT CDasBootServerDlg::OnPktHandleMsg(WPARAM wParam, LPARAM lParam)
     return 0;
   }
 
+  int nMsgLength = (int &)(*pszBuf);
+
   char szMsgType[16] = { 0 };
   strcpy(szMsgType, pszBuf + 4);
 
   pfnDBExportServer pfn;
   pfn = g_mapFunctions[szMsgType];
-  pfn(pszBuf + 4 + 16, sRecv);
+  pfn(pszBuf + 4 + 16, sRecv, nMsgLength);
 
   //SendMessageOut(sRecv, _T("HelloWorldTempu"), _T("nihao测试锄禾日当午"));
 
@@ -456,4 +495,13 @@ HRESULT CDasBootServerDlg::OnPktHandleMsg(WPARAM wParam, LPARAM lParam)
 void CDasBootServerDlg::OnBnClickedButtonMainStopListening()
 {
   // TODO: Add your control notification handler code here
+}
+
+
+void CDasBootServerDlg::OnClose()
+{
+  // TODO: Add your message handler code here and/or call default
+  DeleteCriticalSection(&theApp.m_csSendListOperation);
+
+  CDialogEx::OnClose();
 }

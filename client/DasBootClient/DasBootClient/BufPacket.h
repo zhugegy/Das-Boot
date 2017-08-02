@@ -1,5 +1,6 @@
 #pragma once
-#include <windows.h>
+#include <afxtempl.h>
+#include <afxsock.h>
 
 //缓冲区，所有想要发送的数据，都先来到缓冲区暂时存放
 class CBufPacket
@@ -14,6 +15,7 @@ public:
   virtual ~CBufPacket();
 
   CBufPacket(CBufPacket& pkt);
+  void operator=(CBufPacket& pkt);
 
   BOOL InitBuf();
   BOOL ReleaseBuf();

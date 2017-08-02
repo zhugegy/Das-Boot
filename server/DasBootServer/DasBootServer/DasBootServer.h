@@ -10,6 +10,7 @@
 
 #include "resource.h"		// main symbols
 #include "ClientManager.h"
+#include "BufPacket.h"
 
 // CDasBootServerApp:
 // See DasBootServer.cpp for the implementation of this class
@@ -47,6 +48,11 @@ public:
   WSAEVENT GetEventFromSocketevent(int nIndex);
 
   CClientManager m_objClientManager;
+
+  CList<SOCKET, SOCKET> m_hSendListSockets;
+  CList<CBufPacket *, CBufPacket *> m_hSendListPkts;
+  int m_nSendListElementCount;
+  CRITICAL_SECTION m_csSendListOperation;
 };
 
 extern CDasBootServerApp theApp;

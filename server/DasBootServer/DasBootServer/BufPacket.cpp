@@ -40,6 +40,30 @@ CBufPacket::CBufPacket(CBufPacket& pkt)
   m_pchBuf = pNewBuf;
 }
 
+void CBufPacket::operator=(CBufPacket& pkt)
+{
+  char* pNewBuf = NULL;
+  m_nSize = pkt.m_nSize;
+  m_nLength = pkt.m_nLength;
+
+  //Éî¿½±´
+  if (m_nSize > 0)
+  {
+    pNewBuf = new char[m_nSize];
+    memcpy(pNewBuf, pkt.m_pchBuf, m_nSize);
+  }
+
+  if (m_pchBuf != NULL)
+  {
+    delete[] m_pchBuf;
+    m_pchBuf = NULL;
+  }
+
+  m_pchBuf = pNewBuf;
+
+  return;
+}
+
 BOOL CBufPacket::InitBuf()
 {
   if (m_pchBuf != NULL)

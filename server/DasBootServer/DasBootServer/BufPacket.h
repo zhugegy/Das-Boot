@@ -13,6 +13,7 @@ public:
   virtual ~CBufPacket();
 
   CBufPacket(CBufPacket& pkt);
+  void operator=(CBufPacket& pkt);
 
   BOOL InitBuf();
   BOOL ReleaseBuf();

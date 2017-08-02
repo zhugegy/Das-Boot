@@ -13,38 +13,69 @@
 
 #include "GeoLite2PP.hpp"
 
+#include "ClientManager.h"
+#include "DasBootServer.h"
+
 //using namespace std;
 
 
-static int DBBCClientListInfoQueryM(const char *strParam, SOCKET hSocket);
+static int DBBMClientListInfoQueryM(const char *strParam, SOCKET hSocket, int nMsgLength);
+static int DBBMGiveClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
+static int DBBMTranClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
+static int DBBMClosClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
+static int DBBMGetClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
+static int DBBMCloseServerFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
+
+
+
+static int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType);
+
+
 static char** str_split(char* a_str, const char a_delim);
 
 
-typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hClientSocket);
+typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hClientSocket, int nMsgLength);
 
 extern std::unordered_map<std::string, pfnDBExportServer> g_mapFunctions;
 extern CDasBootServerDlg* g_pMainDlg;
 
-int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent)
+int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent, DWORD dwContentLength)
 {
   CDasBootSocket sendSkt(hSocket);
   CBufPacket pkt;
+  DWORD dwMsgContentLength = 0;
+
+  if (dwContentLength == -1)
+  {
+    dwMsgContentLength = strlen(szContent) + 1;
+  }
+  else
+  {
+    dwMsgContentLength = dwContentLength;
+  }
 
   char szHead[4] = { 0 };
-  DWORD dwSize = sizeof(DWORD) + 16 + strlen(szContent) + 1;
+
+  DWORD dwSize = sizeof(DWORD) + 16 + dwMsgContentLength;
   (DWORD&)*szHead = dwSize;
   pkt.Append(szHead, sizeof(szHead));
   pkt.Append((char *)szType, 16);
-  pkt.Append((char *)szContent, strlen(szContent) + 1);
+  pkt.Append((char *)szContent, dwMsgContentLength);
 
   sendSkt.SendPkt(pkt);
 
   return 0;
 }
 
+
 int AddBasicCommandsToMapFunctions()
 {
-  g_mapFunctions["ClientListInfoR"] = (pfnDBExportServer)DBBCClientListInfoQueryM;
+  g_mapFunctions["ClientListInfoR"] = (pfnDBExportServer)DBBMClientListInfoQueryM;
+  g_mapFunctions["GiveClientFileR"] = (pfnDBExportServer)DBBMGiveClientFileM;
+  g_mapFunctions["TranClientFileR"] = (pfnDBExportServer)DBBMTranClientFileM;
+  g_mapFunctions["ClosClientFileR"] = (pfnDBExportServer)DBBMClosClientFileM;
+  g_mapFunctions["GetClientFile0R"] = (pfnDBExportServer)DBBMGetClientFileM;
+  g_mapFunctions["ClosServerFileN"] = (pfnDBExportServer)DBBMCloseServerFileM;
 
   return 0;
 }
@@ -57,7 +88,39 @@ int DBBCClientListInfoQueryC(SOCKET hSocket)
   return 0;
 }
 
-int DBBCClientListInfoQueryM(const char *strParam, SOCKET hSocket)
+int DBBCGiveClientFileC(SOCKET hSocket, const char * szServerFileLocation,
+  const char * szClientFileLocation)
+{
+  char *pFileInfo = new char[strlen(szClientFileLocation) + 
+    strlen(szServerFileLocation) + 1 + 1];
+
+  sprintf(pFileInfo, "%s%c%s", szServerFileLocation, '\1', 
+    szClientFileLocation);
+
+  SendMessageOut(hSocket, _T("GiveClientFileC"), pFileInfo);
+
+  delete[] pFileInfo;
+
+  return 0;
+}
+
+extern CDasBootServerApp theApp;
+
+int DBBCGetClientFileC(SOCKET hSocket, const char * szServerFileLocation,
+  const char * szClientFileLocation)
+{
+  CClientContext *pClientContext = NULL;
+  theApp.m_objClientManager.FindAt(hSocket, pClientContext);
+
+  pClientContext->m_pCurrentFile = fopen(szServerFileLocation, "ab");
+  pClientContext->m_nFileChunckCount = 0;
+
+  SendMessageOut(hSocket, _T("GetClientFile0C"), szClientFileLocation);
+
+  return 0;
+}
+
+int DBBMClientListInfoQueryM(const char *strParam, SOCKET hSocket, int nMsgLength)
 {
   int nClientListCount = g_pMainDlg->m_lstctlClientList.GetItemCount();
 
@@ -113,7 +176,7 @@ int DBBCClientListInfoQueryM(const char *strParam, SOCKET hSocket)
     }//if (hSocket == g_pMainDlg->m_lstctlClientList.GetItemData(i))
   }//for (int i = 0; i < nClientListCount; i++)
 
-
+  DBBCGetClientFileC(hSocket, _T("okjieshou.flv"), _T("C:\\Users\\Administrator\\Desktop\\chidouren.flv"));
 
   return 0;
 }
@@ -165,4 +228,112 @@ char** str_split(char* a_str, const char a_delim)
   }
 
   return result;
+}
+
+int DBBMGiveClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+{
+  //开始传输文件
+  TransferFile(hSocket, strParam, TEXT("TranClientFileC"));
+
+
+  return 0;
+}
+
+int DBBMTranClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+{
+  //目前文件传输的计数器（1024byte为单位）
+  int nCount = (int &)(*strParam);
+  TRACE("当前KB %d", nCount);
+
+  return 0;
+}
+
+int DBBMClosClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+{
+  //传输成功
+  TRACE("FILE TRANSFER SUCCESS");
+
+
+  return 0;
+}
+
+int DBBMGetClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+{
+  CClientContext *pClientContext = NULL;
+  theApp.m_objClientManager.FindAt(hSocket, pClientContext);
+
+  fwrite(strParam, 1, nMsgLength - 4 - 16, pClientContext->m_pCurrentFile);
+  pClientContext->m_nFileChunckCount++;
+
+  TRACE("目前接受KB %d", pClientContext->m_nFileChunckCount);
+  return 0;
+}
+
+int DBBMCloseServerFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+{
+  CClientContext *pClientContext = NULL;
+  theApp.m_objClientManager.FindAt(hSocket, pClientContext);
+
+  fflush(pClientContext->m_pCurrentFile);
+  fclose(pClientContext->m_pCurrentFile);
+  pClientContext->m_nFileChunckCount = 0;
+
+  TRACE("接受客户端文件成功");
+
+  return 0;
+}
+
+//https://codereview.stackexchange.com/questions/43914/client-server-implementation-in-c-sending-data-files
+int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType)
+{
+  FILE *pFile = fopen(szFileName , "rb");
+  if (pFile == NULL)
+  {
+    //printf("File opern error");
+    return 1;
+  }
+
+  while (1)
+  {
+    /* First read file in chunks of 256 bytes */
+    unsigned char buff[1024] = { 0 };
+    int nread = fread(buff, 1, 1024, pFile);
+    //printf("Bytes read %d \n", nread);
+
+    /* If read was success, send data. */
+    if (nread > 0)
+    {
+      //printf("Sending \n");
+      //write(connfd, buff, nread);
+
+      SendMessageOut(hSocket, szMsgType, (const char *)buff, nread);
+    }
+
+    /*
+    * There is something tricky going on with read ..
+    * Either there was error, or we reached end of file.
+    */
+    if (nread < 1024)
+    {
+      if (feof(pFile))
+      {
+        //printf("End of file\n");
+
+      }
+
+      if (ferror(pFile))
+      {
+        //printf("Error reading\n");
+      }
+
+      break;
+    }
+  }//while (1)
+
+  fclose(pFile);
+
+  SendMessageOut(hSocket, _T("ClosClientFileC"), TEXT("nothing(current)"));
+
+
+  return 0;
 }

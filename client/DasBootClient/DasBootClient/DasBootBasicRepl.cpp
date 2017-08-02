@@ -8,6 +8,7 @@
 #include <tchar.h>
 #include <stdio.h>
 #include <strsafe.h>
+#include <assert.h>
 
 #define IP_STRING_LENGTH 16
 #define USER_NAME_LENGTH 200
@@ -19,48 +20,73 @@
 #pragma comment(lib, "wininet.lib")  //for InternetOpen()
 #pragma comment(lib, "User32.lib")  //for GetOSDisplayString()
 
-static int DBBRClientListInfoQueryR(const char *strParam);
+static int DBBRClientListInfoQueryR(const char *strParam, int nMsgLength);
+static int DBBRGiveClientFileR(const char *strParam, int nMsgLength);
+static int DBBRTransClientFileR(const char *strParam, int nMsgLength);
+static int DBBRCloseClientFileR(const char *strParam, int nMsgLength);
+static int DBBRGetClientFileR(const char *strParam, int nMsgLength);
+
+static char** str_split(char* a_str, const char a_delim);
+static int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType);
+
+
+
 static DWORD GetExternalIPThreadFunc(LPVOID lpParam);
 static BOOL GetOSDisplayString(LPTSTR pszOS);
 
-typedef int(*pfnDBExportClient)(const char *strParam);
+typedef int(*pfnDBExportClient)(const char *strParam, int nMsgLength);
 
 extern std::unordered_map<std::string, pfnDBExportClient> g_mapFunctions;
 extern SOCKET g_hSocketClient;
+extern FILE *g_pCurrentFile;
+extern int g_nFileChunckCount;
 
-int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent)
+
+
+int SendMessageOut(SOCKET hSocket, const char * szType, const char * szContent, DWORD dwContentLength)
 {
   CDasBootSocket sendSkt(hSocket);
   CBufPacket pkt;
+  DWORD dwMsgContentLength = 0;
+
+  if (dwContentLength == -1)
+  {
+    dwMsgContentLength = strlen(szContent) + 1;
+  }
+  else
+  {
+    dwMsgContentLength = dwContentLength;
+  }
 
   char szHead[4] = { 0 };
-  DWORD dwSize = sizeof(DWORD) + 16 + strlen(szContent) + 1;
+
+  DWORD dwSize = sizeof(DWORD) + 16 + dwMsgContentLength;
   (DWORD&)*szHead = dwSize;
   pkt.Append(szHead, sizeof(szHead));
   pkt.Append((char *)szType, 16);
-  pkt.Append((char *)szContent, strlen(szContent) + 1);
+  pkt.Append((char *)szContent, dwMsgContentLength);
 
   sendSkt.SendPkt(pkt);
 
   return 0;
 }
 
+
+
 int AddBasicReplToMapFunctions()
 {
   g_mapFunctions["ClientListInfoC"] = (pfnDBExportClient)DBBRClientListInfoQueryR;
+  g_mapFunctions["GiveClientFileC"] = (pfnDBExportClient)DBBRGiveClientFileR;
+  g_mapFunctions["TranClientFileC"] = (pfnDBExportClient)DBBRTransClientFileR;
+  g_mapFunctions["ClosClientFileC"] = (pfnDBExportClient)DBBRCloseClientFileR;
+  g_mapFunctions["GetClientFile0C"] = (pfnDBExportClient)DBBRGetClientFileR;
+
 
   return 0;
 }
 
-//   LPTSTR lpszSystemInfo;
-//   DWORD cchBuff = 256;       
-//   TCHAR tchBuffer2[256];
-// 
-//   lpszSystemInfo = tchBuffer2;
-// 
-//   int i = GetUserName(lpszSystemInfo, &cchBuff);
 
-int DBBRClientListInfoQueryR(const char *strParam)
+int DBBRClientListInfoQueryR(const char *strParam, int nMsgLength)
 {
   //获取主机的外部IP，进而server可以确定它的地理位置
   char szIPBuf[IP_STRING_LENGTH];
@@ -364,4 +390,178 @@ BOOL GetOSDisplayString(LPTSTR pszOS)
     printf("This sample does not support this version of Windows.\n");
     return FALSE;
   }
+}
+
+int DBBRGiveClientFileR(const char *strParam, int nMsgLength)
+{
+  char *pszClientFileInfo = new char[nMsgLength];
+  char *pszServerFileInfo = new char[nMsgLength];
+
+  char** tokens;
+  tokens = str_split((char *)strParam, '\1');
+
+  if (tokens)
+  {
+    for (int j = 0; *(tokens + j); j++)
+    {
+      //第一段信息是服务端的文件地址
+      if (j == 0)
+      {
+        strcpy(pszServerFileInfo, *(tokens + j));
+      }
+
+      //第二段信息是客户端的文件地址
+      if (j == 1)
+      {
+        strcpy(pszClientFileInfo, *(tokens + j));
+      }
+ 
+      free(*(tokens + j));
+    }
+    free(tokens);
+  }//if (tokens)
+
+  g_pCurrentFile = fopen(pszClientFileInfo, "ab");
+  g_nFileChunckCount = 0;
+
+  SendMessageOut(g_hSocketClient, TEXT("GiveClientFileR"), pszServerFileInfo);
+
+  delete[] pszClientFileInfo;
+  delete[] pszServerFileInfo;
+
+  return 0;
+}
+
+int DBBRCloseClientFileR(const char *strParam, int nMsgLength)
+{
+  fflush(g_pCurrentFile);
+  fclose(g_pCurrentFile);
+  g_nFileChunckCount = 0;
+
+  SendMessageOut(g_hSocketClient, TEXT("ClosClientFileR"), strParam);
+
+  return 0;
+}
+
+int DBBRGetClientFileR(const char *strParam, int nMsgLength)
+{
+  TransferFile(g_hSocketClient, strParam, _T("GetClientFile0R"));
+
+  return 0;
+}
+
+int DBBRTransClientFileR(const char *strParam, int nMsgLength)
+{
+  char szCurrentCount[256];
+  fwrite(strParam, 1, nMsgLength - 4 - 16, g_pCurrentFile);
+
+  g_nFileChunckCount++;
+  sprintf(szCurrentCount, "%d", g_nFileChunckCount);
+
+  SendMessageOut(g_hSocketClient, TEXT("TranClientFileR"), szCurrentCount);
+
+  return 0;
+}
+
+//https://stackoverflow.com/questions/9210528/split-string-with-delimiters-in-c
+char** str_split(char* a_str, const char a_delim)
+{
+  char** result = 0;
+  size_t count = 0;
+  char* tmp = a_str;
+  char* last_comma = 0;
+  char delim[2];
+  delim[0] = a_delim;
+  delim[1] = 0;
+
+  /* Count how many elements will be extracted. */
+  while (*tmp)
+  {
+    if (a_delim == *tmp)
+    {
+      count++;
+      last_comma = tmp;
+    }
+    tmp++;
+  }
+
+  /* Add space for trailing token. */
+  count += last_comma < (a_str + strlen(a_str) - 1);
+
+  /* Add space for terminating null string so caller
+  knows where the list of returned strings ends. */
+  count++;
+
+  result = (char **)malloc(sizeof(char*) * count);
+
+  if (result)
+  {
+    size_t idx = 0;
+    char* token = strtok(a_str, delim);
+
+    while (token)
+    {
+      assert(idx < count);
+      *(result + idx++) = strdup(token);
+      token = strtok(0, delim);
+    }
+    assert(idx == count - 1);
+    *(result + idx) = 0;
+  }
+
+  return result;
+}
+
+//https://codereview.stackexchange.com/questions/43914/client-server-implementation-in-c-sending-data-files
+int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType)
+{
+  FILE *pFile = fopen(szFileName, "rb");
+  if (pFile == NULL)
+  {
+    //printf("File opern error");
+    return 1;
+  }
+
+  while (1)
+  {
+    /* First read file in chunks of 256 bytes */
+    unsigned char buff[1024] = { 0 };
+    int nread = fread(buff, 1, 1024, pFile);
+    //printf("Bytes read %d \n", nread);
+
+    /* If read was success, send data. */
+    if (nread > 0)
+    {
+      //printf("Sending \n");
+      //write(connfd, buff, nread);
+
+      SendMessageOut(hSocket, szMsgType, (const char *)buff, nread);
+    }
+
+    /*
+    * There is something tricky going on with read ..
+    * Either there was error, or we reached end of file.
+    */
+    if (nread < 1024)
+    {
+      if (feof(pFile))
+      {
+        //printf("End of file\n");
+
+      }
+
+      if (ferror(pFile))
+      {
+        //printf("Error reading\n");
+      }
+
+      break;
+    }
+  }//while (1)
+
+  fclose(pFile);
+
+  SendMessageOut(hSocket, _T("ClosServerFileN"), TEXT("nothing(current socket)"));
+
+  return 0;
 }
