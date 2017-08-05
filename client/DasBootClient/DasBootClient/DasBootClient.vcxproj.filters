@@ -27,6 +27,9 @@
     <ClCompile Include="DasBootBasicRepl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LoadDll.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BufPacket.h">
@@ -36,6 +39,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DasBootBasicRepl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DasBootClient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadDll.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -187,6 +187,7 @@
   <ItemGroup>
     <ClInclude Include="BufPacket.h" />
     <ClInclude Include="ClientManager.h" />
+    <ClInclude Include="ClientOperationMainWindow.h" />
     <ClInclude Include="DasBootBasicCommands.h" />
     <ClInclude Include="DasBootServer.h" />
     <ClInclude Include="DasBootServerDlg.h" />
@@ -194,6 +195,7 @@
     <ClInclude Include="GeoLite2PP.hpp" />
     <ClInclude Include="GeoLite2PP_error_category.hpp" />
     <ClInclude Include="GeoLite2PP_version.hpp" />
+    <ClInclude Include="LoadDll.h" />
     <ClInclude Include="maxminddb-compat-util.h" />
     <ClInclude Include="maxminddb.h" />
     <ClInclude Include="maxminddb_config.h" />
@@ -204,12 +206,14 @@
   <ItemGroup>
     <ClCompile Include="BufPacket.cpp" />
     <ClCompile Include="ClientManager.cpp" />
+    <ClCompile Include="ClientOperationMainWindow.cpp" />
     <ClCompile Include="DasBootBasicCommands.cpp" />
     <ClCompile Include="DasBootServer.cpp" />
     <ClCompile Include="DasBootServerDlg.cpp" />
     <ClCompile Include="DasBootSocket.cpp" />
     <ClCompile Include="GeoLite2PP.cpp" />
     <ClCompile Include="GeoLite2PP_error_category.cpp" />
+    <ClCompile Include="LoadDll.cpp" />
     <ClCompile Include="maxminddb.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>

@@ -1,6 +1,7 @@
 #include "DasBootBasicRepl.h"
 #include "BufPacket.h"
 #include "DasBootSocket.h"
+#include "DasBootClient.h"
 #include <string>
 #include <unordered_map>
 #include <windows.h>
@@ -9,6 +10,7 @@
 #include <stdio.h>
 #include <strsafe.h>
 #include <assert.h>
+
 
 #define IP_STRING_LENGTH 16
 #define USER_NAME_LENGTH 200
@@ -20,11 +22,11 @@
 #pragma comment(lib, "wininet.lib")  //for InternetOpen()
 #pragma comment(lib, "User32.lib")  //for GetOSDisplayString()
 
-static int DBBRClientListInfoQueryR(const char *strParam, int nMsgLength);
-static int DBBRGiveClientFileR(const char *strParam, int nMsgLength);
-static int DBBRTransClientFileR(const char *strParam, int nMsgLength);
-static int DBBRCloseClientFileR(const char *strParam, int nMsgLength);
-static int DBBRGetClientFileR(const char *strParam, int nMsgLength);
+static int DBBRClientListInfoQueryR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
+static int DBBRGiveClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
+static int DBBRTransClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
+static int DBBRCloseClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
+static int DBBRGetClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
 
 static char** str_split(char* a_str, const char a_delim);
 static int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType);
@@ -34,7 +36,6 @@ static int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMs
 static DWORD GetExternalIPThreadFunc(LPVOID lpParam);
 static BOOL GetOSDisplayString(LPTSTR pszOS);
 
-typedef int(*pfnDBExportClient)(const char *strParam, int nMsgLength);
 
 extern std::unordered_map<std::string, pfnDBExportClient> g_mapFunctions;
 extern SOCKET g_hSocketClient;
@@ -86,7 +87,7 @@ int AddBasicReplToMapFunctions()
 }
 
 
-int DBBRClientListInfoQueryR(const char *strParam, int nMsgLength)
+int DBBRClientListInfoQueryR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
 {
   //获取主机的外部IP，进而server可以确定它的地理位置
   char szIPBuf[IP_STRING_LENGTH];
@@ -392,7 +393,7 @@ BOOL GetOSDisplayString(LPTSTR pszOS)
   }
 }
 
-int DBBRGiveClientFileR(const char *strParam, int nMsgLength)
+int DBBRGiveClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
 {
   char *pszClientFileInfo = new char[nMsgLength];
   char *pszServerFileInfo = new char[nMsgLength];
@@ -432,7 +433,7 @@ int DBBRGiveClientFileR(const char *strParam, int nMsgLength)
   return 0;
 }
 
-int DBBRCloseClientFileR(const char *strParam, int nMsgLength)
+int DBBRCloseClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
 {
   fflush(g_pCurrentFile);
   fclose(g_pCurrentFile);
@@ -443,14 +444,14 @@ int DBBRCloseClientFileR(const char *strParam, int nMsgLength)
   return 0;
 }
 
-int DBBRGetClientFileR(const char *strParam, int nMsgLength)
+int DBBRGetClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
 {
   TransferFile(g_hSocketClient, strParam, _T("GetClientFile0R"));
 
   return 0;
 }
 
-int DBBRTransClientFileR(const char *strParam, int nMsgLength)
+int DBBRTransClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
 {
   char szCurrentCount[256];
   fwrite(strParam, 1, nMsgLength - 4 - 16, g_pCurrentFile);

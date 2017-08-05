@@ -19,22 +19,17 @@
 //using namespace std;
 
 
-static int DBBMClientListInfoQueryM(const char *strParam, SOCKET hSocket, int nMsgLength);
-static int DBBMGiveClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
-static int DBBMTranClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
-static int DBBMClosClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
-static int DBBMGetClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
-static int DBBMCloseServerFileM(const char *strParam, SOCKET hSocket, int nMsgLength);
+static int DBBMClientListInfoQueryM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+static int DBBMGiveClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+static int DBBMTranClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+static int DBBMClosClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+static int DBBMGetClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+static int DBBMCloseServerFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
 
 
 
 static int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType);
-
-
 static char** str_split(char* a_str, const char a_delim);
-
-
-typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hClientSocket, int nMsgLength);
 
 extern std::unordered_map<std::string, pfnDBExportServer> g_mapFunctions;
 extern CDasBootServerDlg* g_pMainDlg;
@@ -120,7 +115,7 @@ int DBBCGetClientFileC(SOCKET hSocket, const char * szServerFileLocation,
   return 0;
 }
 
-int DBBMClientListInfoQueryM(const char *strParam, SOCKET hSocket, int nMsgLength)
+int DBBMClientListInfoQueryM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO)
 {
   int nClientListCount = g_pMainDlg->m_lstctlClientList.GetItemCount();
 
@@ -176,7 +171,7 @@ int DBBMClientListInfoQueryM(const char *strParam, SOCKET hSocket, int nMsgLengt
     }//if (hSocket == g_pMainDlg->m_lstctlClientList.GetItemData(i))
   }//for (int i = 0; i < nClientListCount; i++)
 
-  DBBCGetClientFileC(hSocket, _T("okjieshou.flv"), _T("C:\\Users\\Administrator\\Desktop\\chidouren.flv"));
+  //DBBCGetClientFileC(hSocket, _T("okjieshou.flv"), _T("C:\\Users\\Administrator\\Desktop\\chidouren.flv"));
 
   return 0;
 }
@@ -230,7 +225,7 @@ char** str_split(char* a_str, const char a_delim)
   return result;
 }
 
-int DBBMGiveClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+int DBBMGiveClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO)
 {
   //开始传输文件
   TransferFile(hSocket, strParam, TEXT("TranClientFileC"));
@@ -239,7 +234,7 @@ int DBBMGiveClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
   return 0;
 }
 
-int DBBMTranClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+int DBBMTranClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO)
 {
   //目前文件传输的计数器（1024byte为单位）
   int nCount = (int &)(*strParam);
@@ -248,7 +243,7 @@ int DBBMTranClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
   return 0;
 }
 
-int DBBMClosClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+int DBBMClosClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO)
 {
   //传输成功
   TRACE("FILE TRANSFER SUCCESS");
@@ -257,11 +252,8 @@ int DBBMClosClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
   return 0;
 }
 
-int DBBMGetClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+int DBBMGetClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO)
 {
-  CClientContext *pClientContext = NULL;
-  theApp.m_objClientManager.FindAt(hSocket, pClientContext);
-
   fwrite(strParam, 1, nMsgLength - 4 - 16, pClientContext->m_pCurrentFile);
   pClientContext->m_nFileChunckCount++;
 
@@ -269,11 +261,8 @@ int DBBMGetClientFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
   return 0;
 }
 
-int DBBMCloseServerFileM(const char *strParam, SOCKET hSocket, int nMsgLength)
+int DBBMCloseServerFileM(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO)
 {
-  CClientContext *pClientContext = NULL;
-  theApp.m_objClientManager.FindAt(hSocket, pClientContext);
-
   fflush(pClientContext->m_pCurrentFile);
   fclose(pClientContext->m_pCurrentFile);
   pClientContext->m_nFileChunckCount = 0;
@@ -337,3 +326,4 @@ int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType)
 
   return 0;
 }
+

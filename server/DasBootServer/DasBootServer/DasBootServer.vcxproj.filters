@@ -63,6 +63,12 @@
     <ClInclude Include="maxminddb-compat-util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ClientOperationMainWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadDll.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DasBootServer.cpp">
@@ -93,6 +99,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="maxminddb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ClientOperationMainWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LoadDll.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

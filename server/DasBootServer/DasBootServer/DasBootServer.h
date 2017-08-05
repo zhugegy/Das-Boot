@@ -16,6 +16,19 @@
 // See DasBootServer.cpp for the implementation of this class
 //
 
+typedef int(*pfnSendMessageOut)(SOCKET hSocket, const char * szType, const char * szContent, DWORD dwContentLength);
+
+typedef int(*pfnDBExportServerOperationConfirm)(SOCKET hSocket, CClientOperationMainWindow *pParentWnd, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+
+typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hSocket, int nMsgLength, CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+
+typedef int(*pfnPluginInterfaceServer)(std::unordered_map<std::string, 
+  pfnDBExportServerOperationConfirm>& mapConfirmFunctions, 
+  std::unordered_map<std::string, pfnDBExportServer>& mapFunctions,
+  std::unordered_map<std::string, std::string>& mapDllIntroduction);
+
+
+
 class CDasBootServerApp : public CWinApp
 {
 public:
@@ -53,6 +66,10 @@ public:
   CList<CBufPacket *, CBufPacket *> m_hSendListPkts;
   int m_nSendListElementCount;
   CRITICAL_SECTION m_csSendListOperation;
+
+  std::unordered_map<std::string, pfnDBExportServerOperationConfirm> m_mapConfirmFunctions;
+  std::unordered_map<std::string, std::string> m_mapDllIntroduction;
+  CList<CString, CString &> m_lstCurrentDllNames;
 };
 
 extern CDasBootServerApp theApp;

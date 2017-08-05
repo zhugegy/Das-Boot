@@ -14,12 +14,13 @@
 #include <string>
 #include <unordered_map>
 
+#include "ClientOperationMainWindow.h"
+#include "LoadDll.h"
+
 using namespace std;
 
 DWORD SendPktThreadProc(LPARAM lparam);
 
-
-typedef int(*pfnDBExportServer)(const char *strParam, SOCKET hClientSocket, int nMsgLength);
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -83,11 +84,12 @@ BEGIN_MESSAGE_MAP(CDasBootServerDlg, CDialogEx)
   ON_MESSAGE(WM_PKTHANDLEMSG, OnPktHandleMsg)
   ON_BN_CLICKED(IDC_BUTTON_MAIN_STOP_LISTENING, &CDasBootServerDlg::OnBnClickedButtonMainStopListening)
   ON_WM_CLOSE()
+  ON_BN_CLICKED(IDC_BUTTON_MAIN_START_OPERATION, &CDasBootServerDlg::OnBnClickedButtonMainStartOperation)
 END_MESSAGE_MAP()
 
 
 // CDasBootServerDlg message handlers
-unordered_map<string, pfnDBExportServer> g_mapFunctions;
+extern unordered_map<string, pfnDBExportServer> g_mapFunctions;
 CDasBootServerDlg* g_pMainDlg = NULL;
 
 BOOL CDasBootServerDlg::OnInitDialog()
@@ -124,6 +126,9 @@ BOOL CDasBootServerDlg::OnInitDialog()
 
   //专门用来发送消息的线程
   AfxBeginThread((AFX_THREADPROC)SendPktThreadProc, 0);
+
+  //载入所有dll
+  LoadExsitingDllWhenStartUp();
 
   AddBasicCommandsToMapFunctions();
   g_pMainDlg = this;
@@ -483,7 +488,11 @@ HRESULT CDasBootServerDlg::OnPktHandleMsg(WPARAM wParam, LPARAM lParam)
 
   pfnDBExportServer pfn;
   pfn = g_mapFunctions[szMsgType];
-  pfn(pszBuf + 4 + 16, sRecv, nMsgLength);
+
+  CClientContext *pClientContext = NULL;
+  theApp.m_objClientManager.FindAt(sRecv, pClientContext);
+
+  pfn(pszBuf + 4 + 16, sRecv, nMsgLength, pClientContext, &SendMessageOut);
 
   //SendMessageOut(sRecv, _T("HelloWorldTempu"), _T("nihao测试锄禾日当午"));
 
@@ -504,4 +513,42 @@ void CDasBootServerDlg::OnClose()
   DeleteCriticalSection(&theApp.m_csSendListOperation);
 
   CDialogEx::OnClose();
+}
+
+
+void CDasBootServerDlg::OnBnClickedButtonMainStartOperation()
+{
+  // TODO: Add your control notification handler code here
+  for (int i = 0; i < m_lstctlClientList.GetItemCount(); i++)
+  {
+    if (m_lstctlClientList.GetItemState(i, LVIS_SELECTED) == LVIS_SELECTED)
+    {
+      SOCKET hSocket = m_lstctlClientList.GetItemData(i);
+      
+      CClientOperationMainWindow *pClientOperationMainWindow = 
+        new CClientOperationMainWindow;
+
+      CClientContext *pClientContext = NULL;
+      theApp.m_objClientManager.FindAt(hSocket, pClientContext);
+
+      if (pClientContext->m_pMyClientOperationMainWindow != NULL)
+      {
+        delete pClientContext->m_pMyClientOperationMainWindow;
+        pClientContext->m_pMyClientOperationMainWindow = NULL;
+      }
+
+      pClientContext->m_pMyClientOperationMainWindow = 
+        pClientOperationMainWindow;
+
+      pClientOperationMainWindow->Create(
+        IDD_DIALOG_CLIENT_OPERATION_MAIN_WINDOW, this);
+      pClientOperationMainWindow->ShowWindow(SW_SHOW);
+      pClientOperationMainWindow->m_hSocket = hSocket;
+
+      CString strWindowCaption;
+      strWindowCaption.Format("%s %d", _T("客户控制主窗口 客户socket："), 
+        (int)hSocket);
+      pClientOperationMainWindow->SetWindowText(strWindowCaption);
+    }
+  }
 }

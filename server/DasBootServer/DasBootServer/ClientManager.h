@@ -1,5 +1,8 @@
 #pragma once
 #include "BufPacket.h"
+#include "ClientOperationMainWindow.h"
+#include <string>
+#include <unordered_map>
 
 typedef BOOL(*PFNTransferMsg)(SOCKET s, CString& str);
 
@@ -12,6 +15,8 @@ struct CClientContext
   {
     m_sClient = s;
     memcpy(&m_addr, &addr, sizeof(sockaddr_in));
+
+    m_pMyClientOperationMainWindow = NULL;
   }
 
   BOOL DoSomething(PFNTransferMsg pfn, CString& str)
@@ -33,6 +38,9 @@ struct CClientContext
 
   FILE *m_pCurrentFile = NULL;
   int m_nFileChunckCount = 0;
+
+  CClientOperationMainWindow *m_pMyClientOperationMainWindow;
+  std::unordered_map<std::string, CDialog*> m_mapClientOperationSubWindows;
 };
 
 class CClientManager

@@ -148,11 +148,14 @@
     <ClCompile Include="DasBootBasicRepl.cpp" />
     <ClCompile Include="DasBootClient.cpp" />
     <ClCompile Include="DasBootSocket.cpp" />
+    <ClCompile Include="LoadDll.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BufPacket.h" />
     <ClInclude Include="DasBootBasicRepl.h" />
+    <ClInclude Include="DasBootClient.h" />
     <ClInclude Include="DasBootSocket.h" />
+    <ClInclude Include="LoadDll.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

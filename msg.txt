@@ -1,10 +1,10 @@
-## DasBootDllTemplate.dll
+// ## DasBootDllTemplate.dll
 
-**HelloWorldTempl**  *db_hello_world*  示例dll中的唯一函数，用于printf()"hello world from dll.\r\n"，并输出第一参数的内容。
+// **HelloWorldTempl**  *db_hello_world*  示例dll中的唯一函数，用于printf()"hello world from dll.\r\n"，并输出第一参数的内容。
 
-## DasBootDllProcess.dll
+// ## DasBootDllProcess.dll
 
-**EnumProcess0000**  *db_enum_process*  遍历进程。
+// **EnumProcess0000**  *db_enum_process*  遍历进程。
 
 ## Basic Server
 
@@ -28,3 +28,31 @@
 
 **GetClientFile0R**
 **ClosServerFileN**
+
+## DasBootDllHelloWorld Server
+
+**HelloWorld0000C**
+
+## DasBootDllHelloWorld Client
+
+**HelloWorld0000R**
+
+## DasBootDllProcessAndThread Server
+
+**RefreshProcessC**
+**TerminateProceC**
+
+## DasBootDllProcessAndThread Client
+
+**RefreshProcessR**
+**TerminateProceR**
+
+## DasBootDllScreen Server
+
+**GetScreenSize0C**
+**CaptureScreen0C**
+
+## DasBootDllScreen Client
+
+**GetScreenSize0R**
+**CaptureScreen0R**

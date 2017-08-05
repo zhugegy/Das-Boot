@@ -40,4 +40,5 @@ public:
   afx_msg void OnBnClickedButtonMainStopListening();
   CListCtrl m_lstctlClientList;
   afx_msg void OnClose();
+  afx_msg void OnBnClickedButtonMainStartOperation();
 };

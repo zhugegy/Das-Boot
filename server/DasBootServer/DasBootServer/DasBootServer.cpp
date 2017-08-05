@@ -6,6 +6,9 @@
 #include "DasBootServer.h"
 #include "DasBootServerDlg.h"
 
+#include <string>
+#include <unordered_map>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -39,7 +42,7 @@ CDasBootServerApp::CDasBootServerApp()
 // The one and only CDasBootServerApp object
 
 CDasBootServerApp theApp;
-
+std::unordered_map<std::string, pfnDBExportServer> g_mapFunctions;
 
 // CDasBootServerApp initialization
 

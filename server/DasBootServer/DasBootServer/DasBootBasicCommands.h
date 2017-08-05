@@ -7,3 +7,5 @@ int DBBCGiveClientFileC(SOCKET hSocket, const char * szServerFileLocation,
   const char * szClientFileLocation);
 int DBBCGetClientFileC(SOCKET hSocket, const char * szServerFileLocation,
   const char * szClientFileLocation);
+
+int LoadCurrentDllWhenStartUp();
