@@ -18,6 +18,10 @@
 
 **GetClientFile0C**
 
+**ReconModuleStaC**
+
+**LoadClientModuC**
+
 ## Basic Client
 
 **ClientListInfoR**
@@ -28,6 +32,10 @@
 
 **GetClientFile0R**
 **ClosServerFileN**
+
+**ReconModuleStaR**
+
+**LoadClientModuR**
 
 ## DasBootDllHelloWorld Server
 

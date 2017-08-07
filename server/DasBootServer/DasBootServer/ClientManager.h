@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "FileTransferStatusDialog.h"
+
 typedef BOOL(*PFNTransferMsg)(SOCKET s, CString& str);
 
 #define RECV_BYTES 256 * 1024
@@ -17,6 +19,7 @@ struct CClientContext
     memcpy(&m_addr, &addr, sizeof(sockaddr_in));
 
     m_pMyClientOperationMainWindow = NULL;
+    m_pFileTransferWindow = NULL;
   }
 
   BOOL DoSomething(PFNTransferMsg pfn, CString& str)
@@ -41,6 +44,8 @@ struct CClientContext
 
   CClientOperationMainWindow *m_pMyClientOperationMainWindow;
   std::unordered_map<std::string, CDialog*> m_mapClientOperationSubWindows;
+  
+  CFileTransferStatusDialog *m_pFileTransferWindow;
 };
 
 class CClientManager

@@ -17,6 +17,8 @@
 #include "ClientOperationMainWindow.h"
 #include "LoadDll.h"
 
+#include "FileTransferStatusDialog.h"
+
 using namespace std;
 
 DWORD SendPktThreadProc(LPARAM lparam);
@@ -405,7 +407,7 @@ void CDasBootServerDlg::OnBnClickedButtonMainStartListening()
 
   tagAddr.sin_family = AF_INET;
   tagAddr.sin_port = htons(8889);
-  tagAddr.sin_addr.S_un.S_addr = INADDR_ANY;  //inet_addr("127.0.0.1");
+  tagAddr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");//INADDR_ANY;  //inet_addr("127.0.0.1");
 
   int nRet = bind(hListeningSocket, (sockaddr*)&tagAddr, sizeof(sockaddr_in));
 
@@ -528,6 +530,9 @@ void CDasBootServerDlg::OnBnClickedButtonMainStartOperation()
       CClientOperationMainWindow *pClientOperationMainWindow = 
         new CClientOperationMainWindow;
 
+      CFileTransferStatusDialog *pFileTransferWindow =
+        new CFileTransferStatusDialog;
+
       CClientContext *pClientContext = NULL;
       theApp.m_objClientManager.FindAt(hSocket, pClientContext);
 
@@ -537,18 +542,33 @@ void CDasBootServerDlg::OnBnClickedButtonMainStartOperation()
         pClientContext->m_pMyClientOperationMainWindow = NULL;
       }
 
+      if (pClientContext->m_pFileTransferWindow != NULL)
+      {
+        delete pClientContext->m_pFileTransferWindow;
+        pClientContext->m_pFileTransferWindow = NULL;
+      }
+
       pClientContext->m_pMyClientOperationMainWindow = 
         pClientOperationMainWindow;
+
+      pClientContext->m_pFileTransferWindow = pFileTransferWindow;
 
       pClientOperationMainWindow->Create(
         IDD_DIALOG_CLIENT_OPERATION_MAIN_WINDOW, this);
       pClientOperationMainWindow->ShowWindow(SW_SHOW);
       pClientOperationMainWindow->m_hSocket = hSocket;
 
+      pFileTransferWindow->Create(
+        IDD_DIALOG_CLIENT_OPERATION_MAIN_WINDOW_FILE_TRANSFER_SUB_WINDOW, this);
+
       CString strWindowCaption;
       strWindowCaption.Format("%s %d", _T("客户控制主窗口 客户socket："), 
         (int)hSocket);
       pClientOperationMainWindow->SetWindowText(strWindowCaption);
+
+      strWindowCaption.Format("%s %d", _T("文件传输状态 客户socket："),
+        (int)hSocket);
+      pFileTransferWindow->SetWindowText(strWindowCaption);
     }
   }
 }

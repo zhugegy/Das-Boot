@@ -41,4 +41,4 @@ DONE 遍历进程，结束进程
 服务端log窗口
 DONE Event网络模型：猴版
 IOCP网络模型：人版
-http://www.codeguru.com/cpp/g-m/bitmap/otherformats/article.php/c4941/ImageHandler-A-Component-to-Copy-an-HDC-Area-to-a-JPEG-File.htm
+远程屏幕改进http://www.codeguru.com/cpp/g-m/bitmap/otherformats/article.php/c4941/ImageHandler-A-Component-to-Copy-an-HDC-Area-to-a-JPEG-File.htm

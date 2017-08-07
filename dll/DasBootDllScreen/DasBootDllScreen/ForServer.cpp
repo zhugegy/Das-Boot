@@ -16,6 +16,10 @@ extern "C" {
 #define DLL_NAME _T("DasBootDllScreen.dll")
 #define DLL_INTRODUCTION _T("远程屏幕。")
 
+#define SERVER_MONITOR_WIDTH 800
+#define SERVER_MONITOR_HEIGHT 600
+#define SERVER_REFRESH_TIME_INTERVAL 3000  //微秒为单位
+
 int DBScreenOperationConfirm(SOCKET hSocket, 
   CClientOperationMainWindow *pParentWnd, CClientContext* pClientContext, 
   pfnSendMessageOut pfnSMO);
@@ -24,6 +28,8 @@ int DBDllGetScreenSizeM(const char *strParam, SOCKET hSocket, int nMsgLength,
   CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
 int DBDllCaptureScreenM(const char *strParam, SOCKET hSocket, int nMsgLength,
   CClientContext* pClientContext, pfnSendMessageOut pfnSMO);
+
+DWORD RefreshMonitorThread(LPARAM lparam);
 
 static char** str_split(char* a_str, const char a_delim);
 
@@ -91,7 +97,8 @@ int DBDllGetScreenSizeM(const char *strParam, SOCKET hSocket, int nMsgLength,
   strRecvdMsg.Format(_T("%s"), strParam);
 
   CClientOperationSubWindow *pClientOperationSubWindow =
-    (CClientOperationSubWindow *)pClientContext->m_mapClientOperationSubWindows[DLL_NAME];
+    (CClientOperationSubWindow *)pClientContext->
+    m_mapClientOperationSubWindows[DLL_NAME];
 
   //如果窗口不存在（已被关闭），则直接退出，避免程序（可能发生的）崩溃
   if (pClientOperationSubWindow == NULL)
@@ -121,7 +128,8 @@ int DBDllGetScreenSizeM(const char *strParam, SOCKET hSocket, int nMsgLength,
     free(tokens);
   }//if (tokens)
 
-  AfxMessageBox(_T("初始化成功"));
+  //AfxMessageBox(_T("初始化成功//已获取客户端屏幕分辨率"));
+  pfnSMO(hSocket, _T("CaptureScreen0C"), _T("nothing"), -1);
 
   return 0;
 }
@@ -179,7 +187,8 @@ int DBDllCaptureScreenM(const char *strParam, SOCKET hSocket, int nMsgLength,
   CClientContext* pClientContext, pfnSendMessageOut pfnSMO)
 {
   CClientOperationSubWindow *pClientOperationSubWindow =
-    (CClientOperationSubWindow *)pClientContext->m_mapClientOperationSubWindows[DLL_NAME];
+    (CClientOperationSubWindow *)pClientContext->
+    m_mapClientOperationSubWindows[DLL_NAME];
 
   //如果窗口不存在（已被关闭），则直接退出，避免程序（可能发生的）崩溃
   if (pClientOperationSubWindow == NULL)
@@ -191,29 +200,47 @@ int DBDllCaptureScreenM(const char *strParam, SOCKET hSocket, int nMsgLength,
   CDC* pDC = pClientOperationSubWindow->GetDC();
 
   memDC.CreateCompatibleDC(pDC);
-
-
   CBitmap bitMap;
-  bitMap.CreateCompatibleBitmap(pDC, pClientOperationSubWindow->m_nScreenWidth, pClientOperationSubWindow->m_nScreenHeight);
+  bitMap.CreateCompatibleBitmap(pDC, pClientOperationSubWindow->m_nScreenWidth, 
+    pClientOperationSubWindow->m_nScreenHeight);
 
-  bitMap.SetBitmapBits(4 * pClientOperationSubWindow->m_nScreenWidth * pClientOperationSubWindow->m_nScreenHeight,
-    strParam);
+  bitMap.SetBitmapBits(4 * pClientOperationSubWindow->m_nScreenWidth * 
+    pClientOperationSubWindow->m_nScreenHeight, strParam);
 
   memDC.SelectObject(&bitMap);
 
-  BOOL bRet = pDC->BitBlt(0,
-    0,
-    800,
-    600,
-    &memDC,
-    0,
-    0,
-    SRCCOPY);
+  BOOL bRet = pDC->BitBlt(0, 0, SERVER_MONITOR_WIDTH, SERVER_MONITOR_HEIGHT, 
+    &memDC, 0, 0, SRCCOPY);
 
   if (bRet == FALSE)
   {
     return 0;
   }
+
+  if (pClientOperationSubWindow->m_bIsMonitoring == true)
+  {
+    HANDLE hSendThread = CreateThread(NULL, 0,
+      (LPTHREAD_START_ROUTINE)RefreshMonitorThread, (LPVOID)pClientContext, 0,
+      NULL);
+  }
+
+  return 0;
+}
+
+
+DWORD RefreshMonitorThread(LPARAM lparam)
+{
+  //这里有点绕远路的感觉，但是是为了省力（lparam传参）
+  CClientContext* pClientContext = (CClientContext*)lparam;
+
+  Sleep(SERVER_REFRESH_TIME_INTERVAL);
+
+  CClientOperationSubWindow *pClientOperationSubWindow =
+    (CClientOperationSubWindow *)pClientContext->
+    m_mapClientOperationSubWindows[DLL_NAME];
+
+  pClientOperationSubWindow->m_pfnSMO(pClientOperationSubWindow->m_hSocket, 
+    _T("CaptureScreen0C"), _T("nothing"), -1);
 
   return 0;
 }

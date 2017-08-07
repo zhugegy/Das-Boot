@@ -25,7 +25,6 @@ CList<CBufPacket *, CBufPacket *> g_hSendListPkts;
 int g_nSendListElementCount = 0;
 CRITICAL_SECTION g_csSendListOperation;
 
-
 int main()
 {
   InitializeCriticalSection(&g_csSendListOperation);

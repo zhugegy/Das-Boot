@@ -69,6 +69,9 @@
     <ClInclude Include="LoadDll.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FileTransferStatusDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DasBootServer.cpp">
@@ -105,6 +108,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="LoadDll.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FileTransferStatusDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

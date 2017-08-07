@@ -38,14 +38,7 @@ int DBDllCaptureScreenR(const char *strParam, int nMsgLength,
   bitMap.CreateCompatibleBitmap(pDesktopDC, nWidth, nHeigth);
   memDC.SelectObject(&bitMap);
 
-  BOOL bRet = memDC.BitBlt(0,
-    0,
-    nWidth,
-    nHeigth,
-    pDesktopDC,
-    0,
-    0,
-    SRCCOPY);
+  BOOL bRet = memDC.BitBlt(0, 0, nWidth, nHeigth, pDesktopDC, 0, 0, SRCCOPY);
 
   if (bRet == FALSE)
   {

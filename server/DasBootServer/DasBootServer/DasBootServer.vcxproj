@@ -192,6 +192,7 @@
     <ClInclude Include="DasBootServer.h" />
     <ClInclude Include="DasBootServerDlg.h" />
     <ClInclude Include="DasBootSocket.h" />
+    <ClInclude Include="FileTransferStatusDialog.h" />
     <ClInclude Include="GeoLite2PP.hpp" />
     <ClInclude Include="GeoLite2PP_error_category.hpp" />
     <ClInclude Include="GeoLite2PP_version.hpp" />
@@ -211,6 +212,7 @@
     <ClCompile Include="DasBootServer.cpp" />
     <ClCompile Include="DasBootServerDlg.cpp" />
     <ClCompile Include="DasBootSocket.cpp" />
+    <ClCompile Include="FileTransferStatusDialog.cpp" />
     <ClCompile Include="GeoLite2PP.cpp" />
     <ClCompile Include="GeoLite2PP_error_category.cpp" />
     <ClCompile Include="LoadDll.cpp" />

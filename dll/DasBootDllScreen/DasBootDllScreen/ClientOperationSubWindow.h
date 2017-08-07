@@ -24,10 +24,11 @@ protected:
 public:
   SOCKET m_hSocket;
   pfnSendMessageOut m_pfnSMO;
-
-  afx_msg void OnBnClickedButtonClientOperationSubWindowScreenStart();
-  afx_msg void OnBnClickedButtonClientOperationSubWindowInit();
-
   int m_nScreenWidth;
   int m_nScreenHeight;
+  bool m_bIsMonitoring;
+
+  afx_msg void OnBnClickedButtonClientOperationSubWindowScreenStart();
+  virtual BOOL OnInitDialog();
+  afx_msg void OnBnClickedButtonClientOperationSubWindowScreenStop();
 };

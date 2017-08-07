@@ -1,5 +1,6 @@
 #pragma once
 #include "afxwin.h"
+#include "afxcmn.h"
 
 
 // CClientOperationMainWindow dialog
@@ -29,4 +30,8 @@ public:
   afx_msg void OnSelchangeComboClientOperationMainWindowChooseModule();
   CComboBox m_cbbModuleName;
   CString m_editModuleIntroduction;
+  CListCtrl m_lstctlModuleStateInClient;
+  afx_msg void OnBnClickedButtonClientOperationMainWindowReRecon();
+  afx_msg void OnBnClickedButtonClientOperationMainWindowSendModule();
+  afx_msg void OnBnClickedButtonClientOperationMainWindowLoadModule();
 };
