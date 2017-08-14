@@ -64,3 +64,25 @@
 
 **GetScreenSize0R**
 **CaptureScreen0R**
+
+## DasBootDllRemoteCmd Server
+
+**StartRemoteCmdC**
+**RmotCmdSendCmdC**
+**CloseRemoteCmdC**
+
+
+## DasBootDllRemoteCmd Client
+
+**StartRemoteCmdR**
+**RemoteCmdMsg00N**
+**RmotCmdSendCmdR**
+**CloseRemoteCmdR**
+
+## DasBootDllFile Server
+
+**FileViewStart0C**
+
+## DasBootDllFile Client
+
+**FileViewStart0R**

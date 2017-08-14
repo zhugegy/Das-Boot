@@ -5,21 +5,26 @@ DONE 2. 文件传输
 DONE 3. 信息识别：信息码->函数自动映射
 DONE 4. 自动加载已存在dll
 5. 隐藏
-6. DLL文件是否存在查询 服务端同
-7. DLL是否已被加载查询 服务端同
-8. 传（接受）DLL 服务端同
-9. 加载DLL
+DONE 6. DLL文件是否存在查询 服务端同
+DONE 7. DLL是否已被加载查询 服务端同
+DONE 8. 传（接受）DLL 服务端同
+DONE 9. 加载DLL
 
 服务端基本功能：
 DONE 1.1 网络通讯 收
 DONE 1.2 网络通讯 发
 DONE 2. 文件传输
-3. 界面
+DONE 3. 界面
 
+模块功能：
 
-远程CMD
+DONE 远程CMD
+远程CMD小bug们
 聊天室：一对一聊天就行
-远程屏幕
+DONE 远程屏幕
+远程屏幕用户设置刷新频率
+远程屏幕截图并保存
+远程屏幕压缩数据（或者改成jpeg格式）
 磁盘信息
 DONE 计算机整体信息概览（主界面）
 计算机细节信息（分界面）
@@ -39,6 +44,6 @@ DONE 遍历进程，结束进程
 遍历注册表
 遍历服务
 服务端log窗口
-DONE Event网络模型：猴版
-IOCP网络模型：人版
+DONE Event网络模型（猴版）
+IOCP网络模型（人版）
 远程屏幕改进http://www.codeguru.com/cpp/g-m/bitmap/otherformats/article.php/c4941/ImageHandler-A-Component-to-Copy-an-HDC-Area-to-a-JPEG-File.htm
