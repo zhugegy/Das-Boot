@@ -2,7 +2,7 @@
 
 Remote PC control (Windows Platform).
 
-For study purpose only. Needs Visual Studio 2015 (or later versions) and C++11 to complie.
+For study purpose only. Needs Visual Studio 2015 (or later versions) and C++11 to compile.
 
 Video Demo: [Vimeo](https://vimeo.com/435450607)
 
